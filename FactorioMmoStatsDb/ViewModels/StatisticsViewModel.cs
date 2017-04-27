@@ -13,7 +13,7 @@ namespace FactorioMmoStatsDb.ViewModels
 		public int Tick { get; set; }
 		[DataMember]
 		public int Speed { get; set; }
-		[DataMember]
+		[DataMember(Name = "players_online")]
 		public int PlayersOnline { get; set; }
 
 		[DataMember(Name = "entities_produced")]
