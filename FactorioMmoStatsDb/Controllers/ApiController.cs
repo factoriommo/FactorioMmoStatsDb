@@ -146,6 +146,20 @@ namespace FactorioMmoStatsDb.Controllers
 				};
 				_context.Statistics.Add(dataPoint);
 			}
+
+			{
+				var dataPoint = new Statistic
+				{
+					Game = session.Game,
+					Session = session,
+					Tick = statsModel.Tick,
+					Timestamp = timestamp,
+					StatisticType = StatisticType.Game,
+					EntityName = "total-players",
+					Value = statsModel.TotalPlayers,
+				};
+				_context.Statistics.Add(dataPoint);
+			}
 		}
 
 		private async Task SaveEntityStats(DateTime timestamp, StatisticsViewModel statsModel, Session session)
