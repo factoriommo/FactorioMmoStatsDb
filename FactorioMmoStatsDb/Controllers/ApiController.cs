@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using FactorioMmoStatsDb.Database;
 using FactorioMmoStatsDb.ViewModels;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using Microsoft.ApplicationInsights;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -62,50 +64,46 @@ namespace FactorioMmoStatsDb.Controllers
 
 		[Route("session/{sessionId:int}/death")]
 		[HttpPut]
-		public async Task<SuccessViewModel> SaveDeath([FromBody]DeathViewModel deathModel)
+		public async Task<SuccessViewModel> SaveDeath(int sessionId, [FromQuery]DateTime timestamp, [FromBody]DeathViewModel deathModel)
 		{
-			var session = await GetSession(deathModel.SessionId);
-			var player = await GetPlayer(deathModel.Player, session);
-
-			var death = new Death
+			try
 			{
-				Game = session.Game,
-				Session = session,
-				Tick = deathModel.Tick,
-				Timestamp = deathModel.Timestamp,
-				Player = player,
-				Cause = deathModel.Cause,
-			};
-			_context.Deaths.Add(death);
-			await _context.SaveChangesAsync();
+				var session = await GetSession(sessionId);
+				var player = await GetPlayer(deathModel.Player, session);
 
-			return new SuccessViewModel { Success = true, };
+				var death = new Death
+				{
+					Game = session.Game,
+					Session = session,
+					Tick = deathModel.Tick,
+					Timestamp = timestamp,
+					Player = player,
+					Cause = deathModel.Cause,
+				};
+				_context.Deaths.Add(death);
+				await _context.SaveChangesAsync();
+
+				return new SuccessViewModel { Success = true, };
+
+			}
+			catch (Exception ex)
+			{
+				new TelemetryClient().TrackException(ex);
+				Response.StatusCode = (int)HttpStatusCode.BadRequest;
+				return new SuccessViewModel { Success = false, };
+			}
 		}
 
 		[Route("session/{sessionId:int}/data")]
 		[HttpPut]
-		public async Task<SuccessViewModel> SaveData([FromBody]StatisticsViewModel statsModel)
+		public async Task<SuccessViewModel> SaveData(int sessionId, [FromQuery]DateTime timestamp, [FromBody]StatisticsViewModel statsModel)
 		{
 			try
 			{
-				var session = await GetSession(statsModel.SessionId);
+				var session = await GetSession(sessionId);
 
-				foreach (var stat in statsModel.Statistics)
-				{
-					var dataPoint = new Statistic
-					{
-						Game = session.Game,
-						Session = session,
-						Tick = statsModel.Tick,
-						Timestamp = statsModel.Timestamp,
-						Type = stat.Type,
-						Value = stat.Value,
-					};
-					if (!string.IsNullOrWhiteSpace(stat.Player))
-						dataPoint.Player = await GetPlayer(stat.Player, session);
-
-					_context.Statistics.Add(dataPoint);
-				}
+				SaveGameStats(timestamp, statsModel, session);
+				await SaveEntityStats(timestamp, statsModel, session);
 
 				await _context.SaveChangesAsync();
 				return new SuccessViewModel { Success = true, };
@@ -113,11 +111,69 @@ namespace FactorioMmoStatsDb.Controllers
 			}
 			catch (Exception ex)
 			{
+				new TelemetryClient().TrackException(ex);
+				Response.StatusCode = (int)HttpStatusCode.BadRequest;
+				return new SuccessViewModel { Success = false, };
+			}
+		}
 
-				throw;
-			}		}
+		private void SaveGameStats(DateTime timestamp, StatisticsViewModel statsModel, Session session)
+		{
+			{
+				var dataPoint = new Statistic
+				{
+					Game = session.Game,
+					Session = session,
+					Tick = statsModel.Tick,
+					Timestamp = timestamp,
+					StatisticType = StatisticType.Game,
+					EntityName = "speed",
+					Value = statsModel.Speed,
+				};
+				_context.Statistics.Add(dataPoint);
+			}
 
-		private async Task<Session> GetSession(int sessionId) => 
+			{
+				var dataPoint = new Statistic
+				{
+					Game = session.Game,
+					Session = session,
+					Tick = statsModel.Tick,
+					Timestamp = timestamp,
+					StatisticType = StatisticType.Game,
+					EntityName = "players-online",
+					Value = statsModel.PlayersOnline,
+				};
+				_context.Statistics.Add(dataPoint);
+			}
+		}
+
+		private async Task SaveEntityStats(DateTime timestamp, StatisticsViewModel statsModel, Session session)
+		{
+			var allStats = statsModel.EntitiesProduced.Select(p => new { Type = StatisticType.Produced, Stat = p, })
+				.Concat(statsModel.EntitiesKilled.Select(p => new { Type = StatisticType.Killed, Stat = p }))
+				.Concat(statsModel.EntitiesPlaced.Select(p => new { Type = StatisticType.Placed, Stat = p }));
+
+			foreach (var stat in allStats)
+			{
+				var dataPoint = new Statistic
+				{
+					Game = session.Game,
+					Session = session,
+					Tick = statsModel.Tick,
+					Timestamp = timestamp,
+					StatisticType = stat.Type,
+					EntityName = stat.Stat.EntityName,
+					Value = stat.Stat.Value,
+				};
+				if (!string.IsNullOrWhiteSpace(stat.Stat.Player))
+					dataPoint.Player = await GetPlayer(stat.Stat.Player, session);
+
+				_context.Statistics.Add(dataPoint);
+			}
+		}
+
+		private async Task<Session> GetSession(int sessionId) =>
 			await _context.Sessions
 				.Include(s => s.Game)
 				.SingleAsync(s => s.SessionId == sessionId);

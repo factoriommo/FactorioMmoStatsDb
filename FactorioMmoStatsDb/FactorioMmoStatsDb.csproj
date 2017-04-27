@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp1.1</TargetFramework>
+    <ApplicationInsightsResourceId>/subscriptions/a2cde64e-0ecb-4bac-bce0-9cbcc164a970/resourcegroups/factoriommostatsdb/providers/microsoft.insights/components/factoriommostatsdb</ApplicationInsightsResourceId>
+    <ApplicationInsightsAnnotationResourceId>/subscriptions/a2cde64e-0ecb-4bac-bce0-9cbcc164a970/resourcegroups/factoriommostatsdb/providers/microsoft.insights/components/factoriommostatsdb</ApplicationInsightsAnnotationResourceId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +18,9 @@
   </ItemGroup>
   <ItemGroup>
     <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="1.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Connected Services" />
   </ItemGroup>
 
 </Project>
