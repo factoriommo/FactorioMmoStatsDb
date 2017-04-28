@@ -178,7 +178,7 @@ namespace FactorioMmoStatsDb.Controllers
 					Timestamp = timestamp,
 					StatisticType = stat.Type,
 					EntityName = stat.Stat.EntityName,
-					Value = stat.Stat.Value,
+					Value = stat.Stat.Amount,
 				};
 				if (!string.IsNullOrWhiteSpace(stat.Stat.Player))
 					dataPoint.Player = await GetPlayer(stat.Stat.Player, session);

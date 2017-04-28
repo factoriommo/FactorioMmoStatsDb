@@ -10,6 +10,6 @@ namespace FactorioMmoStatsDb.ViewModels
 		[DataMember(Name = "entity_name")]
 		public string EntityName { get; set; }
 		[DataMember]
-		public decimal Value { get; set; }
+		public decimal Amount { get; set; }
 	}
 }
